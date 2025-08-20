@@ -139,3 +139,56 @@ body {
 .era-scientific-revolution .event-info { border-color: #1abc9c; }
 .era-industrial-revolution .event-info { border-color: #7f8c8d; }
 .era-technological-revolution-the-great-acceleration .event-info { border-color: #34495e; }
+
+/* --- Cluster Styling --- */
+
+.event-cluster .event-info {
+    /* Make clusters visually distinct and indicate they are clickable */
+    background-color: #34495e;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.event-cluster .event-info:hover {
+    background-color: #4e6d8c;
+}
+
+.event-cluster h3 {
+    color: #ecf0f1;
+}
+
+.event-cluster p {
+    color: #bdc3c7;
+    font-style: italic;
+}
+
+/* --- Expanded Cluster Details Styling --- */
+
+.cluster-details {
+    /* Smooth transition for expand/collapse */
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-in-out;
+    margin-top: 15px;
+    padding-left: 15px;
+    border-left: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.cluster-event-card {
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 10px 15px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+}
+
+.cluster-event-card h4 {
+    font-size: 0.9em;
+    margin-bottom: 3px;
+    color: #ecf0f1;
+}
+
+.cluster-event-card p {
+    font-size: 0.8em;
+    color: #bdc3c7;
+    font-style: normal;
+}

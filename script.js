@@ -39,12 +39,60 @@ document.addEventListener('DOMContentLoaded', () => {
         return 0;
     }
 
-    const events = timelineData.map(event => ({
+    const allMappedEvents = timelineData.map(event => ({
         ...event,
         years_ago: parseDate(event.date_string)
-    })).sort((a, b) => a.years_ago - b.years_ago); // Sort from most recent to oldest
+    }));
 
-    const oldestEventYears = events[events.length - 1].years_ago;
+    const modernEraName = "Technological Revolution & The Great Acceleration";
+    let legacyEvents = [];
+    let modernEvents = [];
+
+    // Separate events by era
+    allMappedEvents.forEach(event => {
+        if (event.era === modernEraName) {
+            modernEvents.push(event);
+        } else {
+            legacyEvents.push(event);
+        }
+    });
+
+    // Group modern events by decade
+    const modernClusters = modernEvents.reduce((acc, event) => {
+        const currentJsYear = new Date().getFullYear();
+        const eventYear = currentJsYear - event.years_ago;
+        const decade = Math.floor(eventYear / 10) * 10;
+
+        if (!acc[decade]) {
+            acc[decade] = {
+                type: 'cluster',
+                era: modernEraName,
+                decade: decade,
+                // Use the years_ago of the earliest event in the decade for positioning
+                years_ago: event.years_ago,
+                description: `Events from the ${decade}s`,
+                date_string: `${decade}s`,
+                events: []
+            };
+        }
+        acc[decade].events.push(event);
+        // Update the position to be the earliest event in that decade
+        if(event.years_ago > acc[decade].years_ago) {
+            acc[decade].years_ago = event.years_ago;
+        }
+        return acc;
+    }, {});
+
+    // Convert clusters object back to an array and sort its internal events
+    const clusterArray = Object.values(modernClusters).map(cluster => {
+        cluster.events.sort((a, b) => a.years_ago - b.years_ago);
+        return cluster;
+    });
+
+    // Combine legacy events with the new clusters
+    const events = [...legacyEvents, ...clusterArray].sort((a, b) => a.years_ago - b.years_ago);
+
+    const oldestEventYears = allMappedEvents.sort((a,b) => a.years_ago - b.years_ago)[allMappedEvents.length - 1].years_ago;
     const mostRecentEventYears = -1; // Represents the future / present day
 
     const SCROLL_MULTIPLIER = 400; // Adjust this to control "zoom"
@@ -78,9 +126,31 @@ document.addEventListener('DOMContentLoaded', () => {
     function createEventElement(event) {
         const eventEl = document.createElement('div');
         const eraClassName = `era-${event.era.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
-        eventEl.className = `event ${eraClassName}`;
         eventEl.style.top = `${event.pixelPosition}px`;
 
+        if (event.type === 'cluster') {
+            eventEl.className = `event event-cluster ${eraClassName}`;
+            eventEl.dataset.decade = event.decade;
+            eventEl.innerHTML = `
+                <div class="event-marker"></div>
+                <div class="event-info">
+                    <h3>${event.description}</h3>
+                    <p>${event.events.length} events</p>
+                </div>
+            `;
+        } else {
+            eventEl.className = `event ${eraClassName}`;
+            eventEl.innerHTML = `
+                <div class="event-marker"></div>
+                <div class="event-info">
+                    <div class="era-title">${event.era}</div>
+                    <h3>${event.description}</h3>
+                    <p>${event.date_string}</p>
+                </div>
+            `;
+        }
+
+        // Apply side-alternating logic to both regular events and clusters
         const side = events.indexOf(event) % 2 === 0 ? 'right' : 'left';
         if (side === 'left') {
             eventEl.style.transform = 'translateX(calc(-100% - 30px))';
@@ -88,21 +158,13 @@ document.addEventListener('DOMContentLoaded', () => {
             eventEl.style.transform = 'translateX(30px)';
         }
 
-        eventEl.innerHTML = `
-            <div class="event-marker"></div>
-            <div class="event-info">
-                <div class="era-title">${event.era}</div>
-                <h3>${event.description}</h3>
-                <p>${event.date_string}</p>
-            </div>
-        `;
         return eventEl;
     }
 
     function updateVisibleEvents() {
         const scrollTop = window.scrollY;
         const viewportHeight = window.innerHeight;
-        const buffer = viewportHeight; // Render events in a buffer zone above and below the viewport
+        const buffer = viewportHeight * 3; // Render events in a larger buffer zone to create a smoother scroll
 
         const visibleStart = scrollTop - buffer;
         const visibleEnd = scrollTop + viewportHeight + buffer;
@@ -190,9 +252,78 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function handleTimelineClick(e) {
+        const clusterNode = e.target.closest('.event-cluster');
+        if (!clusterNode) return;
+
+        const decade = parseInt(clusterNode.dataset.decade);
+        const clusterData = events.find(event => event.type === 'cluster' && event.decade === decade);
+        if (!clusterData) return;
+
+        const infoBox = clusterNode.querySelector('.event-info');
+        if (!infoBox) return;
+
+        // Toggle expanded state
+        if (clusterNode.classList.contains('expanded')) {
+            // Collapse
+            const details = infoBox.querySelector('.cluster-details');
+            if (details) {
+                details.style.maxHeight = '0px'; // Animate collapse
+                setTimeout(() => {
+                    infoBox.removeChild(details);
+                    clusterNode.classList.remove('expanded');
+                    updateTimelineHeight();
+                }, 300); // Match CSS transition time
+            }
+        } else {
+            // Expand
+            clusterNode.classList.add('expanded');
+            const detailsContainer = document.createElement('div');
+            detailsContainer.className = 'cluster-details';
+
+            clusterData.events.forEach(event => {
+                const eventCard = document.createElement('div');
+                eventCard.className = 'cluster-event-card';
+                eventCard.innerHTML = `
+                    <h4>${event.description}</h4>
+                    <p>${event.date_string}</p>
+                `;
+                detailsContainer.appendChild(eventCard);
+            });
+
+            infoBox.appendChild(detailsContainer);
+
+            // Animate expand
+            setTimeout(() => {
+                detailsContainer.style.maxHeight = detailsContainer.scrollHeight + 'px';
+                updateTimelineHeight();
+            }, 10);
+        }
+    }
+
+    function updateTimelineHeight() {
+        // Recalculate the total height of the timeline dynamically
+        const lastEvent = events[events.length - 1];
+        let maxHeight = lastEvent.pixelPosition;
+
+        // Find the bottom of the lowest element
+        const allDomEvents = timelineContainer.querySelectorAll('.event');
+        allDomEvents.forEach(el => {
+            const bottom = el.offsetTop + el.offsetHeight;
+            if (bottom > maxHeight) {
+                maxHeight = bottom;
+            }
+        });
+
+        timelineContainer.style.height = `${maxHeight + window.innerHeight}px`;
+    }
+
+
     // Initial render and setup scroll listener
     window.addEventListener('scroll', handleScroll);
+    timelineContainer.addEventListener('click', handleTimelineClick);
     handleScroll(); // Initial call to populate and set everything up
+    setTimeout(updateTimelineHeight, 100); // Adjust height after initial render
 
     // Scroll to the top to start at the earliest point in history
     window.scrollTo(0, 0);

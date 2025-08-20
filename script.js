@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
     })).sort((a, b) => a.years_ago - b.years_ago); // Sort from most recent to oldest
 
     const oldestEventYears = events[events.length - 1].years_ago;
-    const mostRecentEventYears = -1; // Represents the future / present day
+    const mostRecentEventYears = 0; // Represents the future / present day
 
     const SCROLL_MULTIPLIER = 400; // Adjust this to control "zoom"
 

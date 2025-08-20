@@ -42,24 +42,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const events = timelineData.map(event => ({
         ...event,
         years_ago: parseDate(event.date_string)
-    })).sort((a, b) => b.years_ago - a.years_ago); // Sort from oldest to most recent
+    })).sort((a, b) => a.years_ago - b.years_ago); // Sort from most recent to oldest
 
-    const oldestEventYears = events[0].years_ago;
+    const oldestEventYears = events[events.length - 1].years_ago;
     const mostRecentEventYears = -1; // Represents the future / present day
 
-    const SCROLL_MULTIPLIER = 200; // Adjust this to control "zoom"
+    const SCROLL_MULTIPLIER = 400; // Adjust this to control "zoom"
 
     // Use a logarithmic scale. Add 1 to avoid log(0) issues.
     const yearToPixel = (years_ago) => {
-        return Math.log(years_ago + 1) * SCROLL_MULTIPLIER;
+        const totalHeight = Math.log(oldestEventYears + 1) * SCROLL_MULTIPLIER;
+        return totalHeight - (Math.log(years_ago + 1) * SCROLL_MULTIPLIER);
     };
 
     const pixelToYear = (pixels) => {
-        return Math.exp(pixels / SCROLL_MULTIPLIER) - 1;
+        const totalHeight = Math.log(oldestEventYears + 1) * SCROLL_MULTIPLIER;
+        return Math.exp((totalHeight - pixels) / SCROLL_MULTIPLIER) - 1;
     };
 
     // Calculate the total height of the timeline
-    const timelineHeight = yearToPixel(oldestEventYears);
+    const timelineHeight = yearToPixel(mostRecentEventYears);
     timelineContainer.style.height = `${timelineHeight}px`;
 
     // Store the pixel position for each event for efficient access later
@@ -71,7 +73,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function createEventElement(event) {
         const eventEl = document.createElement('div');
-        eventEl.className = 'event';
+        const eraClassName = `era-${event.era.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+        eventEl.className = `event ${eraClassName}`;
         eventEl.style.top = `${event.pixelPosition}px`;
 
         const side = events.indexOf(event) % 2 === 0 ? 'right' : 'left';
@@ -84,6 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
         eventEl.innerHTML = `
             <div class="event-marker"></div>
             <div class="event-info">
+                <div class="era-title">${event.era}</div>
                 <h3>${event.description}</h3>
                 <p>${event.date_string}</p>
             </div>
@@ -182,6 +186,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial render and setup scroll listener
     window.addEventListener('scroll', handleScroll);
     handleScroll(); // Initial call to populate and set everything up
+
+    // Scroll to the top to start at the earliest point in history
+    window.scrollTo(0, 0);
 
     console.log('Interactive timeline enabled.');
 });

@@ -93,11 +93,11 @@ body {
 /* Styles for when an event is centered and "active" */
 .event.active .event-info {
     opacity: 1;
-    transform: scale(1);
+    /* transform is now handled dynamically by JS */
 }
 
 .event.active .event-marker {
-    transform: translateY(-50%) scale(1);
+     /* transform is now handled dynamically by JS */
 }
 
 /* Alternating sides for events */

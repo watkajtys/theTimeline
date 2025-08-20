@@ -1,169 +1,187 @@
 document.addEventListener('DOMContentLoaded', () => {
     const timelineContainer = document.getElementById('timeline-container');
-    if (!timelineContainer) {
-        console.error('Timeline container not found!');
+    const yearDisplay = document.getElementById('year-display');
+
+    if (!timelineContainer || !yearDisplay) {
+        console.error('Required elements not found!');
         return;
     }
 
-    function calculateYearsAgo(dateString) {
+    function parseDate(dateString) {
+        const lowerCaseDate = dateString.toLowerCase();
         const currentYear = new Date().getFullYear();
-        if (dateString.includes('Billion years ago')) {
-            return parseFloat(dateString) * 1000000000;
+
+        if (lowerCaseDate.includes('billion years ago')) {
+            return parseFloat(lowerCaseDate) * 1e9;
         }
-        if (dateString.includes('Million years ago')) {
-            return parseFloat(dateString) * 1000000;
+        if (lowerCaseDate.includes('million years ago')) {
+            return parseFloat(lowerCaseDate) * 1e6;
         }
-        if (dateString.includes('years ago')) {
-            return parseInt(dateString);
+        if (lowerCaseDate.includes('years ago')) {
+            return parseInt(lowerCaseDate);
         }
-        if (dateString.includes('BCE')) {
-            const year = parseInt(dateString.replace('BCE', '').trim());
+        if (lowerCaseDate.includes('bce')) {
+            const year = parseInt(lowerCaseDate.replace('bce', '').trim());
             return year + currentYear;
         }
-        if (dateString.includes('CE')) {
-            const yearText = dateString.replace('c. ', '').replace('CE', '').replace('(Projected)', '').trim();
+        if (lowerCaseDate.includes('ce')) {
+            const yearText = lowerCaseDate.replace(/c\.\s*|ce|\(projected\)/g, '').trim();
             const year = parseInt(yearText);
             return currentYear - year;
         }
+        // Fallback for simple years like "1928"
+        const year = parseInt(dateString);
+        if (!isNaN(year)) {
+             return currentYear - year;
+        }
+
+        console.warn('Could not parse date:', dateString);
         return 0;
     }
 
-    timelineData.forEach(event => {
-        event.years_ago = calculateYearsAgo(event.date_string);
-    });
+    const events = timelineData.map(event => ({
+        ...event,
+        years_ago: parseDate(event.date_string)
+    })).sort((a, b) => b.years_ago - a.years_ago); // Sort from oldest to most recent
 
-    // Define colors for eras for better visualization
-    const eraColors = {
-        "Pre-Human Era": "#d4e157",
-        "Human Evolution": "#ffca28",
-        "Hunter-Gatherer Society": "#ff7043",
-        "Agricultural Revolution": "#8d6e63",
-        "Empires & Conquests": "#bcaaa4",
-        "The Post-Classical Era": "#a1887f",
-        "Scientific Revolution": "#78909c",
-        "Industrial Revolution": "#546e7a",
-        "Technological Revolution & The Great Acceleration": "#455a64",
+    const oldestEventYears = events[0].years_ago;
+    const mostRecentEventYears = -1; // Represents the future / present day
+
+    const SCROLL_MULTIPLIER = 200; // Adjust this to control "zoom"
+
+    // Use a logarithmic scale. Add 1 to avoid log(0) issues.
+    const yearToPixel = (years_ago) => {
+        return Math.log(years_ago + 1) * SCROLL_MULTIPLIER;
     };
 
-    // The data is processed from past to present
-    const eras = timelineData.reduce((acc, event) => {
-        if (!acc[event.era]) {
-            acc[event.era] = {
-                events: [],
-                start: event.years_ago,
-                end: event.years_ago,
-                color: eraColors[event.era] || '#ccc'
-            };
-        }
-        acc[event.era].events.push(event);
-        acc[event.era].start = Math.min(acc[event.era].start, event.years_ago);
-        acc[event.era].end = Math.max(acc[event.era].end, event.years_ago);
-        return acc;
-    }, {});
+    const pixelToYear = (pixels) => {
+        return Math.exp(pixels / SCROLL_MULTIPLIER) - 1;
+    };
 
-    const totalDuration = timelineData[0].years_ago; // The very first event in the original array
+    // Calculate the total height of the timeline
+    const timelineHeight = yearToPixel(oldestEventYears);
+    timelineContainer.style.height = `${timelineHeight}px`;
 
-    for (const eraName in eras) {
-        const era = eras[eraName];
-        const eraDuration = era.end - era.start;
-        const eraWidth = (eraDuration / totalDuration) * 100;
-
-        const eraBlock = document.createElement('div');
-        eraBlock.classList.add('era');
-        // Use a minimum width for very short eras to make them visible
-        if (eraWidth < 0.1) {
-            eraBlock.style.minWidth = '30px'; // A bit wider for visibility
-        }
-        eraBlock.style.width = `${eraWidth}%`;
-        eraBlock.style.backgroundColor = era.color;
-        eraBlock.title = eraName;
-
-        let lastYearsAgo = -1;
-        let overlapCount = 0;
-        for (const event of era.events) {
-            const eventMarker = document.createElement('div');
-            eventMarker.classList.add('event-marker');
-
-            if (event.years_ago === lastYearsAgo) {
-                overlapCount++;
-            } else {
-                overlapCount = 0;
-            }
-
-            const positionInEra = eraDuration > 0 ? ((event.years_ago - era.start) / eraDuration) * 100 : 50;
-            eventMarker.style.left = `${positionInEra}%`;
-
-            // Stagger markers that have the same year
-            eventMarker.style.bottom = `${10 + (overlapCount * 25)}px`;
-
-            eventMarker.title = `${event.description} (${event.date_string})`;
-
-            // Store data on the element for the popup
-            eventMarker.dataset.description = event.description;
-            eventMarker.dataset.date = event.date_string;
-
-            eraBlock.appendChild(eventMarker);
-            lastYearsAgo = event.years_ago;
-        }
-        timelineContainer.appendChild(eraBlock);
-    }
-
-    // --- Scroll hijacking ---
-    timelineContainer.addEventListener('wheel', (e) => {
-        if (e.deltaY !== 0) {
-            e.preventDefault();
-            // scrollBy is not supported in all browsers, but it offers a smooth scroll option
-            if ('scrollBy' in timelineContainer) {
-                timelineContainer.scrollBy({ left: e.deltaY, top: 0, behavior: 'smooth' });
-            } else {
-                timelineContainer.scrollLeft += e.deltaY;
-            }
-        }
+    // Store the pixel position for each event for efficient access later
+    events.forEach(event => {
+        event.pixelPosition = yearToPixel(event.years_ago);
     });
 
-    // Popup logic
-    const popupContainer = document.getElementById('popup-container');
-    const popupTitle = document.getElementById('popup-title');
-    const popupDate = document.getElementById('popup-date');
-    const popupDescription = document.getElementById('popup-description');
-    const closePopupButton = document.getElementById('close-popup');
+    let visibleEvents = new Map(); // Use a Map to track DOM nodes by event description
 
-    if (popupContainer && popupTitle && popupDate && popupDescription && closePopupButton) {
-        timelineContainer.addEventListener('click', (e) => {
-            if (e.target.classList.contains('event-marker')) {
-                const marker = e.target;
-                popupTitle.textContent = marker.dataset.description;
-                popupDate.textContent = marker.dataset.date;
-                popupDescription.textContent = ""; // Clear previous description
-                popupContainer.classList.remove('hidden');
-            }
-        });
+    function createEventElement(event) {
+        const eventEl = document.createElement('div');
+        eventEl.className = 'event';
+        eventEl.style.top = `${event.pixelPosition}px`;
 
-        closePopupButton.addEventListener('click', () => {
-            popupContainer.classList.add('hidden');
-        });
+        const side = events.indexOf(event) % 2 === 0 ? 'right' : 'left';
+        if (side === 'left') {
+            eventEl.style.transform = 'translateX(calc(-100% - 30px))';
+        } else {
+            eventEl.style.transform = 'translateX(30px)';
+        }
 
-        popupContainer.addEventListener('click', (e) => {
-            if (e.target === popupContainer) {
-                popupContainer.classList.add('hidden');
-            }
-        });
+        eventEl.innerHTML = `
+            <div class="event-marker"></div>
+            <div class="event-info">
+                <h3>${event.description}</h3>
+                <p>${event.date_string}</p>
+            </div>
+        `;
+        return eventEl;
     }
 
-    // Zoom logic using Intersection Observer for better performance
-    const industrialRevolutionEra = Array.from(timelineContainer.children).find(child => child.title === 'Industrial Revolution');
-    if (industrialRevolutionEra) {
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    timelineContainer.classList.add('zoomed');
-                } else {
-                    // Optional: remove zoom when scrolling away.
-                    // For this project, we'll keep it zoomed once triggered for simplicity.
-                }
-            });
-        }, { threshold: 0.01 }); // Trigger when 1% of the element is visible
+    function updateVisibleEvents() {
+        const scrollTop = window.scrollY;
+        const viewportHeight = window.innerHeight;
+        const buffer = viewportHeight; // Render events in a buffer zone above and below the viewport
 
-        observer.observe(industrialRevolutionEra);
+        const visibleStart = scrollTop - buffer;
+        const visibleEnd = scrollTop + viewportHeight + buffer;
+
+        const eventsToDisplay = events.filter(event =>
+            event.pixelPosition >= visibleStart && event.pixelPosition <= visibleEnd
+        );
+
+        const newVisibleEvents = new Map();
+        eventsToDisplay.forEach(event => {
+            newVisibleEvents.set(event.description, event);
+        });
+
+        // Remove events that are no longer visible
+        for (const [key, node] of visibleEvents.entries()) {
+            if (!newVisibleEvents.has(key)) {
+                timelineContainer.removeChild(node);
+                visibleEvents.delete(key);
+            }
+        }
+
+        // Add new events that have become visible
+        for (const [key, event] of newVisibleEvents.entries()) {
+            if (!visibleEvents.has(key)) {
+                const eventEl = createEventElement(event);
+                timelineContainer.appendChild(eventEl);
+                visibleEvents.set(key, eventEl);
+            }
+        }
     }
+
+    function formatYear(years_ago) {
+        const currentYear = new Date().getFullYear();
+        if (years_ago <= -1) {
+            return `${currentYear + Math.abs(Math.round(years_ago))} CE (Projected)`;
+        }
+        if (years_ago < (currentYear - 1)) {
+            return `${currentYear - Math.round(years_ago)} CE`;
+        }
+        if (years_ago < 10000) { // e.g. 8000 BCE
+            return `${Math.round(years_ago - currentYear)} BCE`;
+        }
+        if (years_ago < 1e6) { // e.g. 50,000 Years Ago
+            return `${Math.round(years_ago / 1000) * 1000} Years Ago`;
+        }
+        if (years_ago < 1e9) { // e.g. 2.5 Million Years Ago
+            return `${(years_ago / 1e6).toFixed(2)} Million Years Ago`;
+        }
+        return `${(years_ago / 1e9).toFixed(2)} Billion Years Ago`;
+    }
+
+    function handleScroll() {
+        // This function will now handle both rendering and animations
+        updateVisibleEvents();
+
+        const centerLine = window.scrollY + window.innerHeight / 2;
+
+        // Update year display
+        const centerYear = pixelToYear(centerLine);
+        yearDisplay.textContent = formatYear(centerYear);
+
+        // Find the event closest to the center line and activate it.
+        let closestEventNode = null;
+        let minDistance = Infinity;
+
+        for (const [key, node] of visibleEvents.entries()) {
+            const nodeTop = parseFloat(node.style.top);
+            const distanceToCenter = Math.abs(centerLine - nodeTop);
+
+            if (distanceToCenter < minDistance) {
+                minDistance = distanceToCenter;
+                closestEventNode = node;
+            }
+            // Deactivate all nodes initially
+            node.classList.remove('active');
+        }
+
+        // Activate only the closest one if it's within a reasonable zone
+        const activationZone = window.innerHeight / 2;
+        if (closestEventNode && minDistance < activationZone) {
+            closestEventNode.classList.add('active');
+        }
+    }
+
+    // Initial render and setup scroll listener
+    window.addEventListener('scroll', handleScroll);
+    handleScroll(); // Initial call to populate and set everything up
+
+    console.log('Interactive timeline enabled.');
 });

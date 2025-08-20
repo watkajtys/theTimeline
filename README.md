@@ -18,7 +18,7 @@ This is a static web project. To view the timeline, simply open the `index.html`
 Here are some ideas for future enhancements to the project:
 
 *   **[ ] Improved Zoom Functionality:** Refine the zoom feature to be more proportional. Instead of just expanding the recent eras, we could implement a "smooth zoom" that dynamically recalculates the widths of all eras as you scroll, providing a more fluid and intuitive experience.
-*   **[ ] Logarithmic Scale Toggle:** Add a control to allow users to switch between the current linear scale and a logarithmic scale. This would provide an alternative way to explore the dense parts of the timeline.
+*   **[X] Logarithmic Scale:** The timeline now uses a logarithmic scale to represent human history, from the Big Bang to the present, allowing for intuitive scrolling through vast time spans.
 *   **[ ] Filter by Era:** Implement a filtering mechanism (e.g., a dropdown menu or buttons) to allow users to show or hide specific eras, enabling them to focus on periods of interest.
 *   **[ ] Enhanced Pop-ups:** The pop-up cards for events could be enhanced to include images, short videos, or links to external resources like Wikipedia for more in-depth information.
 *   **[ ] Keyboard Navigation:** Add support for keyboard navigation, allowing users to scroll through the timeline using the left and right arrow keys.

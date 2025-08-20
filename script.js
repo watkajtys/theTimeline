@@ -61,8 +61,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Calculate the total height of the timeline
-    const timelineHeight = yearToPixel(mostRecentEventYears);
-    timelineContainer.style.height = `${timelineHeight}px`;
+    const timelineHeight = Math.log(oldestEventYears + 1) * SCROLL_MULTIPLIER;
+    timelineContainer.style.height = `${timelineHeight + window.innerHeight}px`;
+    
+    console.log('Timeline height:', timelineHeight + window.innerHeight);
+    console.log('Oldest event years:', oldestEventYears);
+    console.log('Number of events:', events.length);
 
     // Store the pixel position for each event for efficient access later
     events.forEach(event => {

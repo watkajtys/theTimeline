@@ -139,3 +139,36 @@ body {
 .era-scientific-revolution .event-info { border-color: #1abc9c; }
 .era-industrial-revolution .event-info { border-color: #7f8c8d; }
 .era-technological-revolution-the-great-acceleration .event-info { border-color: #34495e; }
+
+/* --- Modern Era Grid Styles --- */
+
+#modern-era-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* Responsive columns */
+    gap: 25px;
+    padding: 40px 20px;
+    position: relative; /* For pseudo-element positioning */
+}
+
+/* Add a title for the modern era section */
+#modern-era-grid::before {
+    content: 'The Technological Revolution & The Great Acceleration';
+    font-size: 2.5em;
+    font-weight: bold;
+    color: #fff;
+    text-align: center;
+    grid-column: 1 / -1; /* Make title span all columns */
+    margin-bottom: 30px;
+}
+
+.modern-event-card .event-info {
+    /* The existing .event-info provides a good base, but we need to override some properties */
+    opacity: 1; /* Ensure they are visible by default, unlike the legacy events */
+    transform: none; /* Reset any transform from the base .event-info */
+    transition: transform 0.3s ease-out, box-shadow 0.3s ease-out;
+}
+
+.modern-event-card .event-info:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.7);
+}

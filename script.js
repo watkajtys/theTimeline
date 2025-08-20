@@ -39,12 +39,28 @@ document.addEventListener('DOMContentLoaded', () => {
         return 0;
     }
 
-    const events = timelineData.map(event => ({
+    const modernEraName = "Technological Revolution & The Great Acceleration";
+
+    const allMappedEvents = timelineData.map(event => ({
         ...event,
         years_ago: parseDate(event.date_string)
-    })).sort((a, b) => a.years_ago - b.years_ago); // Sort from most recent to oldest
+    }));
 
-    const oldestEventYears = events[events.length - 1].years_ago;
+    // We need the oldest event from the entire dataset to set the scale correctly
+    const sortedForAge = [...allMappedEvents].sort((a, b) => a.years_ago - b.years_ago);
+    const oldestEventYears = sortedForAge[sortedForAge.length - 1].years_ago;
+
+    // Separate events into two groups for different rendering logic
+    const legacyEvents = allMappedEvents
+        .filter(event => event.era !== modernEraName)
+        .sort((a, b) => a.years_ago - b.years_ago);
+
+    const modernEvents = allMappedEvents
+        .filter(event => event.era === modernEraName)
+        .sort((a, b) => a.years_ago - b.years_ago);
+
+    const events = legacyEvents; // The old rendering logic will now only use legacyEvents
+    const modernEraGrid = document.getElementById('modern-era-grid');
     const mostRecentEventYears = -1; // Represents the future / present day
 
     const SCROLL_MULTIPLIER = 400; // Adjust this to control "zoom"
@@ -60,18 +76,48 @@ document.addEventListener('DOMContentLoaded', () => {
         return Math.exp((totalHeight - pixels) / SCROLL_MULTIPLIER) - 1;
     };
 
-    // Calculate the total height of the timeline
-    const timelineHeight = Math.log(oldestEventYears + 1) * SCROLL_MULTIPLIER;
-    timelineContainer.style.height = `${timelineHeight + window.innerHeight}px`;
-    
-    console.log('Timeline height:', timelineHeight + window.innerHeight);
-    console.log('Oldest event years:', oldestEventYears);
-    console.log('Number of events:', events.length);
-
-    // Store the pixel position for each event for efficient access later
-    events.forEach(event => {
+    // Calculate pixel positions only for legacy events which are positioned absolutely
+    legacyEvents.forEach(event => {
         event.pixelPosition = yearToPixel(event.years_ago);
     });
+
+    // Position the modern era grid container to appear after the last legacy event
+    if (legacyEvents.length > 0) {
+        const lastLegacyEventPosition = legacyEvents[0].pixelPosition; // Most recent legacy event
+        console.log('Positioning modern grid at top:', lastLegacyEventPosition + 200);
+        modernEraGrid.style.position = 'absolute';
+        modernEraGrid.style.top = `${lastLegacyEventPosition + 200}px`; // Margin
+        modernEraGrid.style.width = '100%';
+    }
+
+    // Populate the grid with modern events
+    modernEvents.forEach(event => {
+        const card = document.createElement('div');
+        const eraClassName = `era-${event.era.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+        card.className = `modern-event-card ${eraClassName}`;
+        card.innerHTML = `
+            <div class="event-info">
+                <h3>${event.description}</h3>
+                <p>${event.date_string}</p>
+            </div>
+        `;
+        modernEraGrid.appendChild(card);
+    });
+
+    // Defer the final height calculation to allow the browser to render the grid first
+    setTimeout(() => {
+        const gridTop = modernEraGrid.offsetTop;
+        const gridHeight = modernEraGrid.offsetHeight;
+        const totalTimelineHeight = gridTop + gridHeight;
+        timelineContainer.style.height = `${totalTimelineHeight + window.innerHeight}px`;
+        console.log('Final timeline height calculated:', timelineContainer.style.height);
+        // Add a signal that the layout is complete for testing purposes
+        document.body.setAttribute('data-timeline-ready', 'true');
+    }, 0);
+
+    console.log('Oldest event years:', oldestEventYears);
+    console.log('Number of legacy events:', legacyEvents.length);
+    console.log('Number of modern events:', modernEvents.length);
 
     let visibleEvents = new Map(); // Use a Map to track DOM nodes by event description
 
@@ -81,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
         eventEl.className = `event ${eraClassName}`;
         eventEl.style.top = `${event.pixelPosition}px`;
 
-        const side = events.indexOf(event) % 2 === 0 ? 'right' : 'left';
+        const side = legacyEvents.indexOf(event) % 2 === 0 ? 'right' : 'left';
         if (side === 'left') {
             eventEl.style.transform = 'translateX(calc(-100% - 30px))';
         } else {
@@ -107,9 +153,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const visibleStart = scrollTop - buffer;
         const visibleEnd = scrollTop + viewportHeight + buffer;
 
-        const eventsToDisplay = events.filter(event =>
+        const eventsToDisplay = legacyEvents.filter(event =>
             event.pixelPosition >= visibleStart && event.pixelPosition <= visibleEnd
         );
+        console.log(`Updating visible legacy events. Found: ${eventsToDisplay.length} in viewport.`);
 
         const newVisibleEvents = new Map();
         eventsToDisplay.forEach(event => {

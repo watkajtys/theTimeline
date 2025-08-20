@@ -45,10 +45,8 @@ document.addEventListener('DOMContentLoaded', () => {
         "Technological Revolution & The Great Acceleration": "#455a64",
     };
 
-    // Reverse the data to process from past to present
-    const sortedTimelineData = [...timelineData].reverse();
-
-    const eras = sortedTimelineData.reduce((acc, event) => {
+    // The data is processed from past to present
+    const eras = timelineData.reduce((acc, event) => {
         if (!acc[event.era]) {
             acc[event.era] = {
                 events: [],
@@ -109,6 +107,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         timelineContainer.appendChild(eraBlock);
     }
+
+    // --- Scroll hijacking ---
+    timelineContainer.addEventListener('wheel', (e) => {
+        if (e.deltaY !== 0) {
+            e.preventDefault();
+            // scrollBy is not supported in all browsers, but it offers a smooth scroll option
+            if ('scrollBy' in timelineContainer) {
+                timelineContainer.scrollBy({ left: e.deltaY, top: 0, behavior: 'smooth' });
+            } else {
+                timelineContainer.scrollLeft += e.deltaY;
+            }
+        }
+    });
 
     // Popup logic
     const popupContainer = document.getElementById('popup-container');

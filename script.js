@@ -155,36 +155,39 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleScroll() {
-        // This function will now handle both rendering and animations
         updateVisibleEvents();
 
         const centerLine = window.scrollY + window.innerHeight / 2;
+        const activationZone = window.innerHeight / 2; // The "hot zone" for scaling
 
         // Update year display
         const centerYear = pixelToYear(centerLine);
         yearDisplay.textContent = formatYear(centerYear);
 
-        // Find the event closest to the center line and activate it.
-        let closestEventNode = null;
-        let minDistance = Infinity;
-
-        for (const [key, node] of visibleEvents.entries()) {
+        visibleEvents.forEach(node => {
             const nodeTop = parseFloat(node.style.top);
             const distanceToCenter = Math.abs(centerLine - nodeTop);
 
-            if (distanceToCenter < minDistance) {
-                minDistance = distanceToCenter;
-                closestEventNode = node;
-            }
-            // Deactivate all nodes initially
-            node.classList.remove('active');
-        }
+            const eventInfo = node.querySelector('.event-info');
+            const eventMarker = node.querySelector('.event-marker');
 
-        // Activate only the closest one if it's within a reasonable zone
-        const activationZone = window.innerHeight / 2;
-        if (closestEventNode && minDistance < activationZone) {
-            closestEventNode.classList.add('active');
-        }
+            if (distanceToCenter < activationZone) {
+                // The event is in the "hot zone"
+                const proximity = distanceToCenter / activationZone; // 0 at center, 1 at edge
+                const scale = 0.5 + (1 - proximity) * 0.7; // Scale from 1.2 at center to 0.5 at edge
+
+                eventInfo.style.opacity = 1;
+                eventInfo.style.transform = `scale(${scale})`;
+                eventMarker.style.transform = `translateY(-50%) scale(${scale})`;
+                node.classList.add('active');
+            } else {
+                // The event is outside the "hot zone"
+                eventInfo.style.opacity = 0;
+                eventInfo.style.transform = 'scale(0.5)';
+                eventMarker.style.transform = 'translateY(-50%) scale(0)';
+                node.classList.remove('active');
+            }
+        });
     }
 
     // Initial render and setup scroll listener

@@ -143,22 +143,33 @@ body {
 /* --- Modern Era Grid Styles --- */
 
 #modern-era-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* Responsive columns */
+    display: flex; /* Switch to flexbox */
+    overflow-x: auto; /* Enable horizontal scrolling */
+    flex-wrap: nowrap; /* Ensure items stay in a single line */
     gap: 25px;
-    padding: 40px 20px;
-    position: relative; /* For pseudo-element positioning */
+    padding: 80px 20px 40px; /* Adjust padding to make space for the title */
+    position: relative;
+    scroll-snap-type: x mandatory; /* Snap scrolling */
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 }
 
-/* Add a title for the modern era section */
+/* Reposition the title for the new flexbox layout */
 #modern-era-grid::before {
     content: 'The Technological Revolution & The Great Acceleration';
     font-size: 2.5em;
     font-weight: bold;
     color: #fff;
     text-align: center;
-    grid-column: 1 / -1; /* Make title span all columns */
-    margin-bottom: 30px;
+    position: absolute; /* Position it relative to the grid container */
+    top: 20px;
+    left: 0;
+    width: 100%;
+    margin-bottom: 0; /* Reset margin */
+}
+
+.modern-event-card {
+    flex: 0 0 320px; /* Prevent cards from shrinking or growing */
+    scroll-snap-align: start; /* Snap to the start of each card */
 }
 
 .modern-event-card .event-info {
@@ -166,6 +177,7 @@ body {
     opacity: 1; /* Ensure they are visible by default, unlike the legacy events */
     transform: none; /* Reset any transform from the base .event-info */
     transition: transform 0.3s ease-out, box-shadow 0.3s ease-out;
+    height: 100%; /* Make cards equal height */
 }
 
 .modern-event-card .event-info:hover {
